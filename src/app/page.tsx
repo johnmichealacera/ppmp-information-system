@@ -1,21 +1,16 @@
 import { Suspense } from 'react';
 import { PPMPDashboard } from '@/components/ppmp/dashboard';
+import { Header } from '@/components/layout/header';
 
 export default function Home() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">
-          PPMP Information System
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Project Procurement Management Plan for Municipality of Socorro
-        </p>
-      </div>
-
-      <Suspense fallback={<div>Loading dashboard...</div>}>
-        <PPMPDashboard />
-      </Suspense>
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <Suspense fallback={<div className="flex justify-center py-8">Loading dashboard...</div>}>
+          <PPMPDashboard />
+        </Suspense>
+      </main>
     </div>
   );
 }
