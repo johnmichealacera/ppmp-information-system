@@ -1,0 +1,725 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  REQUESTER
+  STAFF_REQUESTER
+  ACCOUNTING
+  BUDGET
+  TREASURY
+  MAYOR
+  ADMIN
+  DEPARTMENT_HEAD
+  FINANCE_HEAD
+  GSO
+  HR
+  BAC
+  SECRETARY
+  INSPECTORATE
+  PPMP_PREPARER
+  PPMP_APPROVER
+  PPMP_VIEWER
+}
+
+enum VoucherStatus {
+  DRAFT
+  PENDING
+  VALIDATED
+  APPROVED
+  RELEASED
+  REJECTED
+  CANCELLED
+  RETURNED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PayeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PaymentMethod {
+  CASH
+  CHECK
+  E_TRANSFER
+}
+
+enum CanvasItemType {
+  VOUCHER
+  ITEM
+  NOTE
+  ATTACHMENT
+}
+
+enum WorkflowVersionStatus {
+  DRAFT
+  PUBLISHED
+  RETIRED
+}
+
+enum WorkflowStepType {
+  REVIEW
+  PARALLEL_REVIEW
+  SOURCE_OFFICE
+  SYSTEM_ACTION
+  TREASURY
+  NOTIFICATION
+}
+
+enum WorkflowAssignmentType {
+  ROLE
+  DEPARTMENT
+  SOURCE_OFFICE_MEMBER
+  SOURCE_OFFICE_HEAD
+  CREATOR
+  CUSTOM_GROUP
+  INSPECTORATE_DEPARTMENT
+}
+
+enum WorkflowAutoAdvance {
+  NONE
+  ON_FORWARD
+  ON_APPROVE
+  ON_CHECK_ISSUED
+  ON_RELEASED
+}
+
+enum WorkflowRuntimeState {
+  PENDING
+  RUNNING
+  PAUSED
+  RETURNED
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkflowStepStatus {
+  NOT_STARTED
+  RECEIVED
+  REVIEWING
+  FORWARDED
+  APPROVED
+  REJECTED
+  RETURNED
+  COMPLETED
+}
+
+// PPMP Enums
+enum PPMPStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  IMPLEMENTED
+}
+
+enum PPMPProcurementCategory {
+  GOODS
+  INFRASTRUCTURE
+  CONSULTING_SERVICES
+  GENERAL_SERVICES
+  OTHERS
+}
+
+enum PPMPProcurementMethod {
+  COMPETITIVE_BIDDING
+  SHOPPING
+  NEGOTIATED_PROCUREMENT
+  DIRECT_CONTRACTING
+  REPEAT_ORDER
+}
+
+enum PPMPActivityStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CANCELLED
+}
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  name       String
+  password   String?
+  role       UserRole @default(REQUESTER)
+  department String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  createdVouchers     DisbursementVoucher[] @relation("CreatedBy")
+  assignedVouchers    DisbursementVoucher[] @relation("AssignedTo")
+  returnedVouchers    DisbursementVoucher[] @relation("ReturnedBy")
+  uploadedAttachments Attachment[]
+  approvals           Approval[]
+  auditTrails         AuditTrail[]
+  notifications       Notification[]
+  bacReviews          BacReview[]
+  inspectorateReviews InspectorateReview[]
+  accounts            Account[]
+  sessions            Session[]
+  canvasItems         CanvasItem[]
+
+  // PPMP Relations
+  preparedPPMPs PPMP[] @relation("PPMPPreparedBy")
+  approvedPPMPs PPMP[] @relation("PPMPApprovedBy")
+
+  @@map("users")
+}
+
+model DisbursementVoucher {
+  id               String         @id @default(cuid())
+  payee            String
+  address          String
+  amount           Decimal        @db.Decimal(15, 2)
+  particulars      String
+  tags             String[]
+  sourceOffice     String[]
+  status           VoucherStatus  @default(DRAFT)
+  remarks          String?
+  paymentMethod    PaymentMethod?
+  checkNumber      String?
+  releaseDate      DateTime?
+  releaseRecipient String?
+
+  workflowTemplateId        String?
+  workflowTemplateVersionId String?
+  workflowContext           Json?
+
+  createdById                    String
+  assignedToId                   String?
+  assignedInspectorateDepartment String? // Inspectorate department assigned to inspect this voucher (GSO only)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Return tracking fields
+  returnedAt      DateTime?
+  returnedById    String?
+  returnReason    String?
+  returnedToStage String? // Track which stage it was returned from
+  resubmittedAt   DateTime?
+
+  // Relations
+  createdBy           User                 @relation("CreatedBy", fields: [createdById], references: [id])
+  assignedTo          User?                @relation("AssignedTo", fields: [assignedToId], references: [id])
+  returnedBy          User?                @relation("ReturnedBy", fields: [returnedById], references: [id])
+  items               DisbursementItem[]
+  attachments         Attachment[]
+  approvals           Approval[]
+  auditTrails         AuditTrail[]
+  notifications       Notification[]
+  bacReviews          BacReview[]
+  inspectorateReviews InspectorateReview[]
+  canvasItems         CanvasItem[]
+  workflowInstance    WorkflowInstance?
+
+  workflowTemplate        WorkflowTemplate?        @relation(fields: [workflowTemplateId], references: [id])
+  workflowTemplateVersion WorkflowTemplateVersion? @relation(fields: [workflowTemplateVersionId], references: [id])
+
+  // PPMP Relations
+  ppmpLinks PPMPDisbursementLink[]
+
+  @@map("disbursement_vouchers")
+}
+
+model DisbursementItem {
+  id          String  @id @default(cuid())
+  description String
+  quantity    Int
+  unit        String
+  unitPrice   Decimal @db.Decimal(10, 2)
+  totalPrice  Decimal @db.Decimal(12, 2)
+
+  disbursementVoucherId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  disbursementVoucher DisbursementVoucher @relation(fields: [disbursementVoucherId], references: [id], onDelete: Cascade)
+  canvasItems         CanvasItem[]
+
+  @@map("disbursement_items")
+}
+
+model Attachment {
+  id       String  @id @default(cuid())
+  fileName String
+  fileUrl  String
+  fileSize Int?
+  mimeType String?
+
+  uploadedById          String
+  disbursementVoucherId String
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  uploadedBy          User                @relation(fields: [uploadedById], references: [id])
+  disbursementVoucher DisbursementVoucher @relation(fields: [disbursementVoucherId], references: [id], onDelete: Cascade)
+
+  @@map("attachments")
+}
+
+model Approval {
+  id      String         @id @default(cuid())
+  status  ApprovalStatus @default(PENDING)
+  remarks String?
+  level   Int            @default(1) // 1: Department Head, 2: Finance Head, 3: Mayor
+
+  approverId            String
+  disbursementVoucherId String
+  workflowInstanceStepId String?
+
+  createdAt  DateTime  @default(now())
+  approvedAt DateTime?
+
+  // Relations
+  approver            User                @relation(fields: [approverId], references: [id])
+  disbursementVoucher DisbursementVoucher @relation(fields: [disbursementVoucherId], references: [id], onDelete: Cascade)
+  workflowInstanceStep WorkflowInstanceStep? @relation(fields: [workflowInstanceStepId], references: [id], onDelete: SetNull)
+
+  @@unique([approverId, disbursementVoucherId, level])
+  @@map("approvals")
+}
+
+model AuditTrail {
+  id         String  @id @default(cuid())
+  action     String // CREATE, UPDATE, DELETE, APPROVE, REJECT, etc.
+  entityType String // DisbursementVoucher, User, PPMP, etc.
+  entityId   String
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?
+  userAgent  String?
+
+  userId                String
+  disbursementVoucherId String?
+  workflowInstanceStepId String?
+
+  timestamp DateTime @default(now())
+
+  // Relations
+  user                User                 @relation(fields: [userId], references: [id])
+  disbursementVoucher DisbursementVoucher? @relation(fields: [disbursementVoucherId], references: [id], onDelete: SetNull)
+  workflowInstanceStep WorkflowInstanceStep? @relation(fields: [workflowInstanceStepId], references: [id], onDelete: SetNull)
+
+  @@map("audit_trails")
+}
+
+model Notification {
+  id       String  @id @default(cuid())
+  type     String // "voucher_created", "approval_needed", "ppmp_submitted", etc.
+  title    String
+  message  String
+  isRead   Boolean @default(false)
+  priority String  @default("medium") // "high", "medium", "low"
+
+  userId                String
+  disbursementVoucherId String?
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  disbursementVoucher DisbursementVoucher? @relation(fields: [disbursementVoucherId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model BacReview {
+  id       String         @id @default(cuid())
+  status   ApprovalStatus @default(PENDING)
+  comments String?
+
+  reviewerId            String
+  disbursementVoucherId String
+
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  // Relations
+  reviewer            User                @relation(fields: [reviewerId], references: [id])
+  disbursementVoucher DisbursementVoucher @relation(fields: [disbursementVoucherId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewerId, disbursementVoucherId])
+  @@map("bac_reviews")
+}
+
+model InspectorateReview {
+  id       String  @id @default(cuid())
+  comments String?
+
+  inspectorId           String
+  disbursementVoucherId String
+
+  createdAt   DateTime  @default(now())
+  receivedAt  DateTime?
+  reviewedAt  DateTime?
+  forwardedAt DateTime?
+
+  // Relations
+  inspector           User                @relation(fields: [inspectorId], references: [id])
+  disbursementVoucher DisbursementVoucher @relation(fields: [disbursementVoucherId], references: [id], onDelete: Cascade)
+
+  @@unique([inspectorId, disbursementVoucherId])
+  @@map("inspectorate_reviews")
+}
+
+model PayeeDirectory {
+  id        String      @id @default(cuid())
+  name      String
+  address   String
+  status    PayeeStatus @default(ACTIVE)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([name, address])
+  @@map("payee_directory")
+}
+
+model TagDirectory {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  status    PayeeStatus @default(ACTIVE)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@map("tag_directory")
+}
+
+model ItemDirectory {
+  id               String      @id @default(cuid())
+  name             String
+  unit             String?
+  defaultUnitPrice Decimal?    @db.Decimal(12, 2)
+  status           PayeeStatus @default(ACTIVE)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@unique([name, unit])
+  @@map("item_directory")
+}
+
+model DepartmentDirectory {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  code      String?     @unique
+  status    PayeeStatus @default(ACTIVE)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  workflowAssignments WorkflowAssignment[]
+
+  // PPMP Relations
+  ppmpDocuments PPMP[]
+
+  @@map("department_directory")
+}
+
+model RemarksChecklistItem {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  status      PayeeStatus @default(ACTIVE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("remarks_checklist_items")
+}
+
+// NextAuth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model CanvasItem {
+  id       String         @id @default(cuid())
+  type     CanvasItemType
+  content  String
+  position Json? // For storing x, y coordinates
+  size     Json? // For storing width, height
+  metadata Json? // For storing additional properties
+
+  userId                String?
+  disbursementVoucherId String?
+  disbursementItemId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  disbursementVoucher DisbursementVoucher? @relation(fields: [disbursementVoucherId], references: [id], onDelete: Cascade)
+  disbursementItem    DisbursementItem?    @relation(fields: [disbursementItemId], references: [id], onDelete: Cascade)
+
+  @@map("canvas_items")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model WorkflowTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  createdById String
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  versions WorkflowTemplateVersion[]
+  vouchers DisbursementVoucher[]
+  instances WorkflowInstance[]
+  assignments WorkflowAssignment[]
+
+  @@map("workflow_templates")
+}
+
+model WorkflowTemplateVersion {
+  id          String                 @id @default(cuid())
+  templateId  String
+  version     Int
+  status      WorkflowVersionStatus  @default(DRAFT)
+  definition  Json
+  createdAt   DateTime               @default(now())
+  publishedAt DateTime?
+
+  template WorkflowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  steps    WorkflowStepTemplate[]
+  vouchers DisbursementVoucher[]
+  instances WorkflowInstance[]
+
+  @@unique([templateId, version])
+  @@map("workflow_template_versions")
+}
+
+model WorkflowStepTemplate {
+  id             String                  @id @default(cuid())
+  versionId      String
+  order          Int
+  key            String
+  label          String
+  stepType       WorkflowStepType        @default(REVIEW)
+  assignmentType WorkflowAssignmentType  @default(ROLE)
+  assignmentRole UserRole?
+  assignmentDeptId String?
+  minApprovals   Int?
+  autoAdvanceOn  WorkflowAutoAdvance     @default(NONE)
+  statusOnEntry  VoucherStatus?
+  statusOnExit   VoucherStatus?
+  metadata       Json?
+
+  version WorkflowTemplateVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  instanceSteps WorkflowInstanceStep[]
+
+  @@map("workflow_step_templates")
+}
+
+model WorkflowInstance {
+  id                 String               @id @default(cuid())
+  voucherId          String               @unique
+  templateId         String
+  templateVersionId  String
+  state              WorkflowRuntimeState @default(PENDING)
+  currentStepId      String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  voucher  DisbursementVoucher   @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  template WorkflowTemplate      @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateVersion WorkflowTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  steps    WorkflowInstanceStep[]
+
+  @@map("workflow_instances")
+}
+
+model WorkflowInstanceStep {
+  id             String              @id @default(cuid())
+  instanceId     String
+  stepTemplateId String
+  status         WorkflowStepStatus  @default(NOT_STARTED)
+  completedAt    DateTime?
+  payload        Json?
+  assignees      Json?
+  sequence       Int
+  parallelGroup  String?
+
+  instance WorkflowInstance      @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  template WorkflowStepTemplate  @relation(fields: [stepTemplateId], references: [id], onDelete: Cascade)
+  approvals Approval[]
+  auditTrails AuditTrail[]
+
+  @@map("workflow_instance_steps")
+}
+
+model WorkflowAssignment {
+  id                String   @id @default(cuid())
+  workflowTemplateId String
+  assignmentType    String   // "ROLE" or "DEPARTMENT"
+  assignmentRole    UserRole?
+  assignmentDepartmentId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workflowTemplate WorkflowTemplate @relation(fields: [workflowTemplateId], references: [id], onDelete: Cascade)
+  department       DepartmentDirectory? @relation(fields: [assignmentDepartmentId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowTemplateId, assignmentType, assignmentRole, assignmentDepartmentId])
+  @@map("workflow_assignments")
+}
+
+model SystemSettings {
+  id          String  @id @default("system")
+  key         String  @unique
+  value       String
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+// PPMP Models
+model PPMP {
+  id                String   @id @default(cuid())
+  title             String
+  fiscalYear        Int
+  departmentId      String
+  preparedById      String
+  approvedById      String?
+  status            PPMPStatus @default(DRAFT)
+  totalEstimatedBudget Decimal @db.Decimal(15, 2)
+  totalAllocatedBudget  Decimal @db.Decimal(15, 2)
+
+  // Relations
+  department       DepartmentDirectory @relation(fields: [departmentId], references: [id])
+  preparedBy       User                @relation("PPMPPreparedBy", fields: [preparedById], references: [id])
+  approvedBy       User?               @relation("PPMPApprovedBy", fields: [approvedById], references: [id])
+  items            PPMPItem[]
+  procurementActivities PPMPProcurementActivity[]
+  budgetAllocations PPMPBudgetAllocation[]
+  disbursementLinks PPMPDisbursementLink[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ppmp_documents")
+}
+
+model PPMPItem {
+  id          String   @id @default(cuid())
+  ppmpId      String
+  category    PPMPProcurementCategory
+  itemNo      String   // PPMP reference number
+  description String
+  quantity    Int
+  unit        String
+  unitCost    Decimal  @db.Decimal(10, 2)
+  totalCost   Decimal  @db.Decimal(12, 2)
+  procurementMethod PPMPProcurementMethod
+  schedule   Json     // Timeline data
+  remarks    String?
+
+  ppmp PPMP @relation(fields: [ppmpId], references: [id], onDelete: Cascade)
+  activities PPMPProcurementActivity[]
+  disbursementLinks PPMPDisbursementLink[]
+
+  @@map("ppmp_items")
+}
+
+model PPMPProcurementActivity {
+  id              String   @id @default(cuid())
+  ppmpId          String
+  ppmpItemId      String?
+  activity        String
+  startDate       DateTime
+  endDate         DateTime
+  responsibleUnit String
+  status          PPMPActivityStatus @default(PLANNED)
+
+  ppmp    PPMP      @relation(fields: [ppmpId], references: [id], onDelete: Cascade)
+  ppmpItem PPMPItem? @relation(fields: [ppmpItemId], references: [id])
+
+  @@map("ppmp_procurement_activities")
+}
+
+model PPMPBudgetAllocation {
+  id            String   @id @default(cuid())
+  ppmpId        String
+  budgetCode    String   // COA budget classification
+  description   String
+  allocatedAmount Decimal @db.Decimal(12, 2)
+  expendedAmount  Decimal @db.Decimal(12, 2) @default(0)
+
+  ppmp PPMP @relation(fields: [ppmpId], references: [id], onDelete: Cascade)
+
+  @@map("ppmp_budget_allocations")
+}
+
+model PPMPDisbursementLink {
+  id             String   @id @default(cuid())
+  ppmpId         String
+  ppmpItemId     String
+  disbursementId String
+
+  ppmp       PPMP       @relation(fields: [ppmpId], references: [id], onDelete: Cascade)
+  ppmpItem   PPMPItem   @relation(fields: [ppmpItemId], references: [id], onDelete: Cascade)
+  disbursement DisbursementVoucher @relation(fields: [disbursementId], references: [id])
+
+  @@unique([ppmpId, ppmpItemId, disbursementId])
+  @@map("ppmp_disbursement_links")
+}

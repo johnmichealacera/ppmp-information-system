@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { PPMPDashboard } from '@/components/ppmp/dashboard';
 
-export default function Home() {
+export default function PPMPPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -13,7 +13,7 @@ export default function Home() {
         </p>
       </div>
 
-      <Suspense fallback={<div>Loading dashboard...</div>}>
+      <Suspense fallback={<div>Loading...</div>}>
         <PPMPDashboard />
       </Suspense>
     </div>
