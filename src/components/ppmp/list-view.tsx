@@ -48,7 +48,7 @@ interface Department {
 }
 
 const STATUS_OPTIONS = [
-  { value: '', label: 'All Statuses' },
+  { value: 'all', label: 'All Statuses' },
   { value: 'DRAFT', label: 'Draft' },
   { value: 'SUBMITTED', label: 'Submitted' },
   { value: 'APPROVED', label: 'Approved' },
@@ -57,7 +57,7 @@ const STATUS_OPTIONS = [
 ];
 
 const FISCAL_YEAR_OPTIONS = [
-  { value: '', label: 'All Years' },
+  { value: 'all', label: 'All Years' },
   ...Array.from({ length: 10 }, (_, i) => {
     const year = new Date().getFullYear() - 2 + i;
     return { value: year.toString(), label: year.toString() };
@@ -202,7 +202,7 @@ export function PPMPListView() {
 
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={filters.status} onValueChange={(value) => updateFilter('status', value)}>
+              <Select value={filters.status || 'all'} onValueChange={(value) => updateFilter('status', value === 'all' ? '' : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
@@ -218,7 +218,7 @@ export function PPMPListView() {
 
             <div className="space-y-2">
               <Label htmlFor="fiscalYear">Fiscal Year</Label>
-              <Select value={filters.fiscalYear} onValueChange={(value) => updateFilter('fiscalYear', value)}>
+              <Select value={filters.fiscalYear || 'all'} onValueChange={(value) => updateFilter('fiscalYear', value === 'all' ? '' : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Years" />
                 </SelectTrigger>
@@ -234,12 +234,12 @@ export function PPMPListView() {
 
             <div className="space-y-2">
               <Label htmlFor="department">Department</Label>
-              <Select value={filters.departmentId} onValueChange={(value) => updateFilter('departmentId', value)}>
+              <Select value={filters.departmentId || 'all'} onValueChange={(value) => updateFilter('departmentId', value === 'all' ? '' : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="All Departments" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Departments</SelectItem>
+                  <SelectItem value="all">All Departments</SelectItem>
                   {departments.map((dept) => (
                     <SelectItem key={dept.id} value={dept.id}>
                       {dept.name}

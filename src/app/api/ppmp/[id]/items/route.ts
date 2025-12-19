@@ -44,6 +44,7 @@ export async function GET(
     const items = await db.pPMPItem.findMany({
       where: { ppmpId: id },
       include: {
+        product: true,
         activities: true,
         disbursementLinks: {
           include: {
@@ -119,6 +120,7 @@ export async function POST(
 
     const body = await request.json();
     const {
+      productId,
       category,
       itemNo,
       description,
@@ -127,7 +129,10 @@ export async function POST(
       unitCost,
       procurementMethod,
       schedule,
-      remarks
+      remarks,
+      // Monthly allocations
+      jan, feb, march, april, may, june,
+      july, august, sept, oct, nov, dec
     } = body;
 
     // Validate required fields
@@ -140,9 +145,26 @@ export async function POST(
 
     const totalCost = quantity * parseFloat(unitCost);
 
+    // Calculate total from monthly allocations if provided
+    const monthlyAllocations = {
+      jan: jan ? parseFloat(jan) : null,
+      feb: feb ? parseFloat(feb) : null,
+      march: march ? parseFloat(march) : null,
+      april: april ? parseFloat(april) : null,
+      may: may ? parseFloat(may) : null,
+      june: june ? parseFloat(june) : null,
+      july: july ? parseFloat(july) : null,
+      august: august ? parseFloat(august) : null,
+      sept: sept ? parseFloat(sept) : null,
+      oct: oct ? parseFloat(oct) : null,
+      nov: nov ? parseFloat(nov) : null,
+      dec: dec ? parseFloat(dec) : null
+    };
+
     const item = await db.pPMPItem.create({
       data: {
         ppmpId: id,
+        productId: productId || null,
         category,
         itemNo,
         description,
@@ -152,9 +174,11 @@ export async function POST(
         totalCost,
         procurementMethod,
         schedule: schedule || {},
-        remarks
+        remarks,
+        ...monthlyAllocations
       },
       include: {
+        product: true,
         activities: true
       }
     });

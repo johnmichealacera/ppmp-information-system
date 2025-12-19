@@ -108,6 +108,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
+      ppmpNo,
+      ppmpType,
       title,
       fiscalYear,
       departmentId,
@@ -133,6 +135,8 @@ export async function POST(request: NextRequest) {
 
     const ppmp = await db.pPMP.create({
       data: {
+        ppmpNo: ppmpNo || null,
+        ppmpType: ppmpType || null,
         title,
         fiscalYear: parseInt(fiscalYear),
         departmentId,

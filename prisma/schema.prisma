@@ -151,6 +151,23 @@ enum PPMPActivityStatus {
   CANCELLED
 }
 
+enum PRStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ConsolidatedRFQStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CANCELLED
+  AWARDED
+}
+
 model User {
   id         String   @id @default(cuid())
   email      String   @unique
@@ -179,6 +196,13 @@ model User {
   // PPMP Relations
   preparedPPMPs PPMP[] @relation("PPMPPreparedBy")
   approvedPPMPs PPMP[] @relation("PPMPApprovedBy")
+
+  // Office Employee Relations
+  officeEmployees OfficeEmployee[]
+
+  // Purchase Request Relations
+  createdPRs OfficePR[] @relation("PRCreatedBy")
+  createdConsolidatedPRs ConsolidatedPR[] @relation("ConsoPRCreatedBy")
 
   @@map("users")
 }
@@ -431,6 +455,10 @@ model DepartmentDirectory {
   // PPMP Relations
   ppmpDocuments PPMP[]
 
+  // Office Relations
+  officeEmployees OfficeEmployee[]
+  officeExpenditures OfficeExpenditure[]
+
   @@map("department_directory")
 }
 
@@ -633,9 +661,82 @@ model SystemSettings {
   @@map("system_settings")
 }
 
+// Product Master Table (ERD: product)
+model Product {
+  id          String   @id @default(cuid())
+  description String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  ppmpProducts PPMPItem[]
+
+  @@map("products")
+}
+
+// Office Employee Junction Table (ERD: office_employee)
+model OfficeEmployee {
+  id       String   @id @default(cuid())
+  empId    String
+  officeId String
+
+  // Relations
+  employee User                 @relation(fields: [empId], references: [id], onDelete: Cascade)
+  office   DepartmentDirectory  @relation(fields: [officeId], references: [id], onDelete: Cascade)
+
+  // PPMP Relations
+  ppmps OfficePPMP[]
+
+  // Purchase Request Relations
+  prs OfficePR[] @relation("PROfficeEmployee")
+  consolidatedPRs ConsolidatedPR[] @relation("ConsoPROfficeEmployee")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([empId, officeId])
+  @@index([empId, officeId])
+  @@map("office_employee")
+}
+
+// Expenditure Account (ERD: expenditure_account)
+model ExpenditureAccount {
+  id          String   @id @default(cuid())
+  expClass    String
+  expenditure String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  officeExpenditures OfficeExpenditure[]
+
+  @@unique([expClass, expenditure])
+  @@map("expenditure_account")
+}
+
+// Office Expenditure (ERD: office_expenditure)
+model OfficeExpenditure {
+  id            String   @id @default(cuid())
+  officeId      String
+  expAcctId     String
+  appropriation Decimal  @db.Decimal(15, 2)
+  year          Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  office         DepartmentDirectory  @relation(fields: [officeId], references: [id], onDelete: Cascade)
+  expenditureAccount ExpenditureAccount @relation(fields: [expAcctId], references: [id], onDelete: Cascade)
+
+  @@unique([officeId, expAcctId, year])
+  @@map("office_expenditure")
+}
+
 // PPMP Models
 model PPMP {
   id                String   @id @default(cuid())
+  ppmpNo            String?  // ERD: ppmp_no
+  ppmpType          String?  // ERD: ppmp_type
   title             String
   fiscalYear        Int
   departmentId      String
@@ -653,6 +754,7 @@ model PPMP {
   procurementActivities PPMPProcurementActivity[]
   budgetAllocations PPMPBudgetAllocation[]
   disbursementLinks PPMPDisbursementLink[]
+  officePpmps      OfficePPMP[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -660,9 +762,26 @@ model PPMP {
   @@map("ppmp_documents")
 }
 
+// Office PPMP (ERD: office_ppmp) - Links PPMP to OfficeEmployee
+model OfficePPMP {
+  id              String   @id @default(cuid())
+  ppmpId          String
+  officeEmployeeId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  ppmp          PPMP          @relation(fields: [ppmpId], references: [id], onDelete: Cascade)
+  officeEmployee OfficeEmployee @relation(fields: [officeEmployeeId], references: [id], onDelete: Cascade)
+
+  @@unique([ppmpId, officeEmployeeId])
+  @@map("office_ppmp")
+}
+
 model PPMPItem {
   id          String   @id @default(cuid())
   ppmpId      String
+  productId   String?  // ERD: Links to product table
   category    PPMPProcurementCategory
   itemNo      String   // PPMP reference number
   description String
@@ -671,12 +790,30 @@ model PPMPItem {
   unitCost    Decimal  @db.Decimal(10, 2)
   totalCost   Decimal  @db.Decimal(12, 2)
   procurementMethod PPMPProcurementMethod
-  schedule   Json     // Timeline data
+  schedule   Json?    // Timeline data (kept for backward compatibility)
   remarks    String?
 
+  // Monthly allocations (ERD: jan, feb, march, ..., dec)
+  jan     Decimal? @db.Decimal(12, 2)
+  feb     Decimal? @db.Decimal(12, 2)
+  march   Decimal? @db.Decimal(12, 2)
+  april   Decimal? @db.Decimal(12, 2)
+  may     Decimal? @db.Decimal(12, 2)
+  june    Decimal? @db.Decimal(12, 2)
+  july    Decimal? @db.Decimal(12, 2)
+  august  Decimal? @db.Decimal(12, 2)
+  sept    Decimal? @db.Decimal(12, 2)
+  oct     Decimal? @db.Decimal(12, 2)
+  nov     Decimal? @db.Decimal(12, 2)
+  dec     Decimal? @db.Decimal(12, 2)
+
+  // Relations
   ppmp PPMP @relation(fields: [ppmpId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
   activities PPMPProcurementActivity[]
   disbursementLinks PPMPDisbursementLink[]
+  prProducts OfficePRProduct[] @relation("PRPPMPProducts")  // Links to Purchase Requests
+  consoProducts ConsolidatedPRProduct[] @relation("ConsoPPMPProducts")  // Links to Consolidated RFQ
 
   @@map("ppmp_items")
 }
@@ -722,4 +859,86 @@ model PPMPDisbursementLink {
 
   @@unique([ppmpId, ppmpItemId, disbursementId])
   @@map("ppmp_disbursement_links")
+}
+
+// Purchase Request Models (ERD: office_pr, office_pr_product)
+model OfficePR {
+  id              String   @id @default(cuid())
+  prNo            String   // ERD: pr_no
+  status          PRStatus @default(DRAFT)
+  purpose         String?  // ERD: purpose
+  remarks         String?  // ERD: remarks
+  ppmpAligned     Boolean  @default(false) // ERD: ppmp_aligned
+  officeEmployeeId String
+  createdById     String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  officeEmployee OfficeEmployee @relation("PROfficeEmployee", fields: [officeEmployeeId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation("PRCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  products      OfficePRProduct[] @relation("PRProducts")
+  consoProducts ConsolidatedPRProduct[] @relation("ConsoPRProducts")
+
+  @@map("office_pr")
+}
+
+model OfficePRProduct {
+  id              String   @id @default(cuid())
+  prId            String
+  ppmpProductId   String   // ERD: Links to ppmp_product
+  unit            String
+  qty             Decimal  @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  pr          OfficePR  @relation("PRProducts", fields: [prId], references: [id], onDelete: Cascade)
+  ppmpProduct PPMPItem @relation("PRPPMPProducts", fields: [ppmpProductId], references: [id], onDelete: Cascade)
+
+  @@map("office_pr_product")
+}
+
+// Add missing relation names to PPMPItem
+
+// Consolidated RFQ Models (ERD: consolidated_pr, conso_pr_product)
+model ConsolidatedPR {
+  id              String   @id @default(cuid())
+  consoNo         String   // ERD: conso_no
+  category        String?  // ERD: category
+  status          ConsolidatedRFQStatus @default(DRAFT)
+  description     String?  // ERD: description
+  officeEmployeeId String
+  createdById     String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  officeEmployee OfficeEmployee @relation("ConsoPROfficeEmployee", fields: [officeEmployeeId], references: [id], onDelete: Cascade)
+  createdBy     User           @relation("ConsoPRCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  products      ConsolidatedPRProduct[]
+
+  @@map("consolidated_pr")
+}
+
+model ConsolidatedPRProduct {
+  id              String   @id @default(cuid())
+  consoPrId       String
+  prId            String?  // ERD: Links to office_pr
+  unit            String
+  qty             Decimal  @db.Decimal(10, 2)
+  ppmpProductId   String?  // ERD: ppm_product_id (links to ppmp_product)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  consoPr     ConsolidatedPR @relation(fields: [consoPrId], references: [id], onDelete: Cascade)
+  pr          OfficePR?      @relation("ConsoPRProducts", fields: [prId], references: [id], onDelete: SetNull)
+  ppmpProduct PPMPItem?      @relation("ConsoPPMPProducts", fields: [ppmpProductId], references: [id], onDelete: SetNull)
+
+  @@map("conso_pr_product")
 }

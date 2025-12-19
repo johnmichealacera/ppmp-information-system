@@ -11,7 +11,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Edit, Trash2, Package, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, Package } from 'lucide-react';
+import { ProductSelector } from './product-selector';
+import { MonthlyAllocationInput } from './monthly-allocation-input';
 
 interface PPMPItemManagerProps {
   ppmpId: string;
@@ -22,6 +24,8 @@ interface PPMPItemManagerProps {
 
 interface PPMPItem {
   id: string;
+  productId?: string | null;
+  product?: { id: string; description: string } | null;
   category: string;
   itemNo: string;
   description: string;
@@ -32,6 +36,18 @@ interface PPMPItem {
   procurementMethod: string;
   schedule?: any;
   remarks?: string;
+  jan?: number | null;
+  feb?: number | null;
+  march?: number | null;
+  april?: number | null;
+  may?: number | null;
+  june?: number | null;
+  july?: number | null;
+  august?: number | null;
+  sept?: number | null;
+  oct?: number | null;
+  nov?: number | null;
+  dec?: number | null;
 }
 
 const CATEGORIES = [
@@ -54,6 +70,7 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PPMPItem | null>(null);
   const [formData, setFormData] = useState({
+    productId: null as string | null,
     category: '',
     itemNo: '',
     description: '',
@@ -61,11 +78,26 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
     unit: '',
     unitCost: '',
     procurementMethod: '',
-    remarks: ''
+    remarks: '',
+    monthlyAllocations: {
+      jan: null as number | null,
+      feb: null as number | null,
+      march: null as number | null,
+      april: null as number | null,
+      may: null as number | null,
+      june: null as number | null,
+      july: null as number | null,
+      august: null as number | null,
+      sept: null as number | null,
+      oct: null as number | null,
+      nov: null as number | null,
+      dec: null as number | null
+    }
   });
 
   const resetForm = () => {
     setFormData({
+      productId: null,
       category: '',
       itemNo: '',
       description: '',
@@ -73,7 +105,21 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
       unit: '',
       unitCost: '',
       procurementMethod: '',
-      remarks: ''
+      remarks: '',
+      monthlyAllocations: {
+        jan: null,
+        feb: null,
+        march: null,
+        april: null,
+        may: null,
+        june: null,
+        july: null,
+        august: null,
+        sept: null,
+        oct: null,
+        nov: null,
+        dec: null
+      }
     });
     setEditingItem(null);
   };
@@ -82,6 +128,7 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
     if (item) {
       setEditingItem(item);
       setFormData({
+        productId: item.productId || null,
         category: item.category,
         itemNo: item.itemNo,
         description: item.description,
@@ -89,7 +136,21 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
         unit: item.unit,
         unitCost: item.unitCost.toString(),
         procurementMethod: item.procurementMethod,
-        remarks: item.remarks || ''
+        remarks: item.remarks || '',
+        monthlyAllocations: {
+          jan: item.jan || null,
+          feb: item.feb || null,
+          march: item.march || null,
+          april: item.april || null,
+          may: item.may || null,
+          june: item.june || null,
+          july: item.july || null,
+          august: item.august || null,
+          sept: item.sept || null,
+          oct: item.oct || null,
+          nov: item.nov || null,
+          dec: item.dec || null
+        }
       });
     } else {
       resetForm();
@@ -108,10 +169,21 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
     return quantity * unitCost;
   };
 
+  const handleCreateProduct = async (description: string) => {
+    const response = await fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description })
+    });
+    if (!response.ok) throw new Error('Failed to create product');
+    return response.json();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const data = {
+      productId: formData.productId,
       category: formData.category,
       itemNo: formData.itemNo,
       description: formData.description,
@@ -120,7 +192,8 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
       unitCost: parseFloat(formData.unitCost),
       totalCost: calculateTotalCost(),
       procurementMethod: formData.procurementMethod,
-      remarks: formData.remarks
+      remarks: formData.remarks,
+      ...formData.monthlyAllocations
     };
 
     try {
@@ -217,7 +290,7 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
                   Add Item
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <form onSubmit={handleSubmit}>
                   <DialogHeader>
                     <DialogTitle>
@@ -229,6 +302,15 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
                   </DialogHeader>
 
                   <div className="grid grid-cols-2 gap-4 py-4">
+                    <div className="col-span-2">
+                      <ProductSelector
+                        value={formData.productId || undefined}
+                        onSelect={(productId) => setFormData(prev => ({ ...prev, productId: productId || null }))}
+                        onCreateNew={handleCreateProduct}
+                        disabled={!canEdit}
+                      />
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="category">Category</Label>
                       <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
@@ -337,6 +419,31 @@ export function PPMPItemManager({ ppmpId, items, canEdit, onUpdate }: PPMPItemMa
                         rows={2}
                       />
                     </div>
+                  </div>
+
+                  <div className="py-4">
+                    <MonthlyAllocationInput
+                      values={formData.monthlyAllocations}
+                      onChange={(values) => setFormData(prev => ({ 
+                        ...prev, 
+                        monthlyAllocations: {
+                          jan: values.jan ?? null,
+                          feb: values.feb ?? null,
+                          march: values.march ?? null,
+                          april: values.april ?? null,
+                          may: values.may ?? null,
+                          june: values.june ?? null,
+                          july: values.july ?? null,
+                          august: values.august ?? null,
+                          sept: values.sept ?? null,
+                          oct: values.oct ?? null,
+                          nov: values.nov ?? null,
+                          dec: values.dec ?? null
+                        }
+                      }))}
+                      totalCost={calculateTotalCost()}
+                      disabled={!canEdit}
+                    />
                   </div>
 
                   <DialogFooter>

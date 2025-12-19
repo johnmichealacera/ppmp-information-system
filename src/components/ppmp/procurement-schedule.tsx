@@ -291,12 +291,12 @@ export function ProcurementSchedule({ ppmpId, activities, canEdit, onUpdate }: P
 
                     <div className="space-y-2">
                       <Label htmlFor="ppmpItemId">Related Item (Optional)</Label>
-                      <Select value={formData.ppmpItemId} onValueChange={(value) => setFormData(prev => ({ ...prev, ppmpItemId: value }))}>
+                      <Select value={formData.ppmpItemId || 'none'} onValueChange={(value) => setFormData(prev => ({ ...prev, ppmpItemId: value === 'none' ? '' : value }))}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select related item" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No related item</SelectItem>
+                          <SelectItem value="none">No related item</SelectItem>
                           {/* TODO: Fetch and display PPMP items */}
                         </SelectContent>
                       </Select>
