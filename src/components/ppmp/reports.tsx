@@ -11,7 +11,6 @@ import {
   BarChart3,
   PieChart,
   TrendingUp,
-  DollarSign,
   FileText,
   Calendar,
   Building,
@@ -210,7 +209,7 @@ export function PPMPReports() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
-              <DollarSign className="w-8 h-8 text-green-600" />
+              <span className="w-8 h-8 text-green-600 text-2xl font-bold flex items-center justify-center">₱</span>
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Total Budget</p>
                 <p className="text-2xl font-bold">{formatCurrency(reportData.summary.totalBudget)}</p>

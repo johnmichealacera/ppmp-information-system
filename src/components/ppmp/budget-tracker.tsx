@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Edit, Trash2, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, AlertTriangle } from 'lucide-react';
 
 interface BudgetTrackerProps {
   ppmpId: string;
@@ -146,7 +146,7 @@ export function BudgetTracker({ ppmpId, allocations, canEdit, onUpdate }: Budget
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5" />
+              <span className="text-xl font-bold">₱</span>
               Budget Allocations
             </CardTitle>
             <CardDescription>
@@ -224,7 +224,7 @@ export function BudgetTracker({ ppmpId, allocations, canEdit, onUpdate }: Budget
       <CardContent>
         {allocations.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <DollarSign className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <span className="text-4xl font-bold mx-auto mb-4 opacity-50 block">₱</span>
             <p>No budget allocations defined yet.</p>
             {canEdit && (
               <p className="text-sm mt-2">Click &quot;Add Allocation&quot; to define budget lines.</p>
@@ -237,7 +237,7 @@ export function BudgetTracker({ ppmpId, allocations, canEdit, onUpdate }: Budget
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center">
-                    <DollarSign className="w-8 h-8 text-muted-foreground" />
+                    <span className="w-8 h-8 text-muted-foreground text-2xl font-bold flex items-center justify-center">₱</span>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-muted-foreground">Total Allocated</p>
                       <p className="text-2xl font-bold text-green-600">

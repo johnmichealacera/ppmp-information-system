@@ -16,7 +16,6 @@ import {
   XCircle,
   Clock,
   FileText,
-  DollarSign,
   Calendar,
   User,
   Building,
@@ -490,7 +489,7 @@ export function PPMPDetail({ id }: PPMPDetailProps) {
               <FileText className="w-8 h-8 text-muted-foreground" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Procurement Items</p>
-                <p className="text-2xl font-bold">{ppmp._count.items}</p>
+                <p className="text-2xl font-bold">{ppmp._count?.items ?? ppmp.items?.length ?? 0}</p>
               </div>
             </div>
           </CardContent>
@@ -502,7 +501,7 @@ export function PPMPDetail({ id }: PPMPDetailProps) {
               <Calendar className="w-8 h-8 text-muted-foreground" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Activities</p>
-                <p className="text-2xl font-bold">{ppmp._count.procurementActivities}</p>
+                <p className="text-2xl font-bold">{ppmp._count?.procurementActivities ?? ppmp.procurementActivities?.length ?? 0}</p>
               </div>
             </div>
           </CardContent>
@@ -511,10 +510,10 @@ export function PPMPDetail({ id }: PPMPDetailProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center">
-              <DollarSign className="w-8 h-8 text-muted-foreground" />
+              <span className="w-8 h-8 text-muted-foreground text-2xl font-bold flex items-center justify-center">₱</span>
               <div className="ml-4">
                 <p className="text-sm font-medium text-muted-foreground">Linked Disbursements</p>
-                <p className="text-2xl font-bold">{ppmp._count.disbursementLinks}</p>
+                <p className="text-2xl font-bold">{ppmp._count?.disbursementLinks ?? ppmp.disbursementLinks?.length ?? 0}</p>
               </div>
             </div>
           </CardContent>

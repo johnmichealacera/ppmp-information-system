@@ -27,6 +27,7 @@ export async function GET(
         },
         items: {
           include: {
+            product: true,
             activities: true,
             disbursementLinks: {
               include: {
@@ -56,6 +57,13 @@ export async function GET(
                 releaseDate: true
               }
             }
+          }
+        },
+        _count: {
+          select: {
+            items: true,
+            procurementActivities: true,
+            disbursementLinks: true
           }
         }
       }

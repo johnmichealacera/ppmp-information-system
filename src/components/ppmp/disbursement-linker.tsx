@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Plus, Link, Unlink, Search, DollarSign, FileText, Calendar } from 'lucide-react';
+import { Plus, Link, Unlink, Search, FileText, Calendar } from 'lucide-react';
 
 interface PPMPDisbursementLinkerProps {
   ppmpId: string;
@@ -234,7 +234,7 @@ export function PPMPDisbursementLinker({ ppmpId, links, onUpdate }: PPMPDisburse
                           <p className="text-sm text-muted-foreground">{selectedDisbursement.particulars}</p>
                           <div className="flex items-center gap-4 mt-2 text-sm">
                             <span className="flex items-center gap-1">
-                              <DollarSign className="w-3 h-3" />
+                              <span className="text-sm font-bold">₱</span>
                               {formatCurrency(selectedDisbursement.amount)}
                             </span>
                             <span className="flex items-center gap-1">
@@ -347,7 +347,7 @@ export function PPMPDisbursementLinker({ ppmpId, links, onUpdate }: PPMPDisburse
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center">
-                    <DollarSign className="w-8 h-8 text-muted-foreground" />
+                    <span className="w-8 h-8 text-muted-foreground text-2xl font-bold flex items-center justify-center">₱</span>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-muted-foreground">Total Linked Amount</p>
                       <p className="text-2xl font-bold text-green-600">

@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, Check, FileText, Building, Calendar, DollarSign } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, FileText, Building, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface Department {
@@ -18,10 +18,14 @@ interface Department {
   code?: string;
 }
 
+const PesoIcon = ({ className }: { className?: string }) => (
+  <span className={`font-bold ${className || ''}`}>₱</span>
+);
+
 const STEPS = [
   { id: 'basic', title: 'Basic Information', icon: FileText },
   { id: 'department', title: 'Department & Year', icon: Building },
-  { id: 'budget', title: 'Budget Planning', icon: DollarSign },
+  { id: 'budget', title: 'Budget Planning', icon: PesoIcon },
   { id: 'review', title: 'Review & Create', icon: Check }
 ];
 
@@ -232,7 +236,7 @@ export function PPMPCreationWizard() {
           <Card className="max-w-2xl mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
+                <span className="text-lg font-bold">₱</span>
                 Budget Planning
               </CardTitle>
               <CardDescription>
